@@ -96,8 +96,12 @@ object Huffman {
   /**
    * Checks whether the list `trees` contains only one single code tree.
    */
-    def singleton(trees: List[CodeTree]): Boolean = ???
-  
+    def singleton(trees: List[CodeTree]): Boolean =
+      trees match {
+        case _ :: Nil => true
+        case _ => false
+      }
+
   /**
    * The parameter `trees` of this function is a list of code trees ordered
    * by ascending weights.
@@ -110,7 +114,14 @@ object Huffman {
    * If `trees` is a list of less than two elements, that list should be returned
    * unchanged.
    */
-    def combine(trees: List[CodeTree]): List[CodeTree] = ???
+    def combine(trees: List[CodeTree]): List[CodeTree] =
+      trees match {
+        case _ :: Nil | Nil => trees
+        case a :: b :: xs => {
+          val merged = Fork(a, b, chars(a) ::: chars(b), weight(a) + weight(b))
+          xs.filter(t => weight(t) <= weight(merged)) ::: List(merged) ::: xs.filter(t => weight(t) > weight(merged))
+        }
+      }
   
   /**
    * This function will be called in the following way:
@@ -129,7 +140,11 @@ object Huffman {
    *    the example invocation. Also define the return type of the `until` function.
    *  - try to find sensible parameter names for `xxx`, `yyy` and `zzz`.
    */
-    def until(xxx: ???, yyy: ???)(zzz: ???): ??? = ???
+    def until(cond: List[CodeTree] => Boolean, comb: List[CodeTree] => List[CodeTree])(trees: List[CodeTree]): CodeTree =
+      cond(trees) match {
+        case true => trees.head
+        case false => until(cond, comb)(comb(trees))
+      }
   
   /**
    * This function creates a code tree which is optimal to encode the text `chars`.
@@ -137,7 +152,7 @@ object Huffman {
    * The parameter `chars` is an arbitrary text. This function extracts the character
    * frequencies from that text and creates a code tree based on them.
    */
-    def createCodeTree(chars: List[Char]): CodeTree = ???
+    def createCodeTree(chars: List[Char]): CodeTree = until(singleton, combine)(makeOrderedLeafList(times(chars)))
   
 
   // Part 3: Decoding
@@ -148,8 +163,25 @@ object Huffman {
    * This function decodes the bit sequence `bits` using the code tree `tree` and returns
    * the resulting list of characters.
    */
-    def decode(tree: CodeTree, bits: List[Bit]): List[Char] = ???
-  
+    def decode_char(tree: CodeTree, bits: List[Bit]): (Char, List[Bit]) =
+      (tree, bits) match {
+        case (Fork(l, _, _, _), 0 :: xs) => decode_char(l, xs)
+        case (Fork(_, r, _, _), 1 :: xs) => decode_char(r, xs)
+        case (Leaf(c, _), xs) => (c, xs)
+      }
+    def decode_loop(tree: CodeTree, bits: List[Bit], cur: List[Char]): List[Char] =
+      bits match {
+        case Nil => cur
+        case xs => {
+          decode_char(tree, bits) match {
+            case (c, Nil) => c :: cur
+            case (c, xs) => decode_loop(tree, xs, c :: cur)
+
+          }
+        }
+      }
+    def decode(tree: CodeTree, bits: List[Bit]): List[Char] = decode_loop(tree, bits, Nil).reverse
+
   /**
    * A Huffman coding tree for the French language.
    * Generated from the data given at
@@ -166,7 +198,7 @@ object Huffman {
   /**
    * Write a function that returns the decoded secret
    */
-    def decodedSecret: List[Char] = ???
+    def decodedSecret: List[Char] = decode(frenchCode, secret)
   
 
   // Part 4a: Encoding using Huffman tree
@@ -175,7 +207,18 @@ object Huffman {
    * This function encodes `text` using the code tree `tree`
    * into a sequence of bits.
    */
-    def encode(tree: CodeTree)(text: List[Char]): List[Bit] = ???
+    def encode_char(tree: CodeTree, char: Char, buf: List[Bit]): List[Bit] =
+      tree match {
+        case Leaf(c, _) => buf.reverse
+        case Fork(l, r, cs, _) =>
+          if (chars(l).contains(char)) encode_char(l, char, 0 :: buf)
+          else encode_char(r, char, 1 :: buf)
+      }
+    def encode(tree: CodeTree)(text: List[Char]): List[Bit] =
+      text match {
+        case Nil => Nil
+        case x :: xs => encode_char(tree, x, Nil) ::: encode(tree)(xs)
+      }
   
   // Part 4b: Encoding using code table
 
