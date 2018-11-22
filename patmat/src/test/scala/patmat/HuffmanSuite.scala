@@ -55,4 +55,9 @@ class HuffmanSuite extends FunSuite {
     }
   }
 
+  test("encode a very long text should be ok") {
+    val str = "makeOrderedLeafList for some frequency table"
+    assert(quickEncode(createCodeTree(string2Chars(str)))(string2Chars(str*100)).length > 100)
+  }
+
 }
