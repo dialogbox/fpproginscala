@@ -37,12 +37,22 @@ object Anagrams {
   def wordOccurrences(w: Word): Occurrences =
     w.groupBy((k: Char) => k.toLower).mapValues((v: String) => v.length).toList.sortBy(e => e._1)
 
-  /** Converts a sentence into its character occurrence list. */
-  def sentenceOccurrences(s: Sentence): Occurrences =
-    s.flatMap(w => wordOccurrences(w))
-      .groupBy(e => e._1)
+  /** Aggregate occurrences by character occurrence list.
+    *
+    * `List(('t', 1), ('e', 1), ('a', 2), ('e', 1), ('a', 1))`
+    *
+    * to
+    *
+    * `List(('a', 3), ('e', 2), ('t', 1))`
+    */
+  def aggregateOccurrences(o: Occurrences): Occurrences =
+    o.groupBy(e => e._1)
       .mapValues(v => v.map(e => e._2).sum)
       .toList.sortBy(e => e._1)
+
+  /** Converts a sentence into its character occurrence list. */
+  def sentenceOccurrences(s: Sentence): Occurrences =
+    aggregateOccurrences(s.flatMap(w => wordOccurrences(w)))
 
   /** The `dictionaryByOccurrences` is a `Map` from different occurrences to a sequence of all
    *  the words that have that occurrence count.
@@ -90,7 +100,12 @@ object Anagrams {
    *  Note that the order of the occurrence list subsets does not matter -- the subsets
    *  in the example above could have been displayed in some other order.
    */
-  def combinations(occurrences: Occurrences): List[Occurrences] = ???
+  def combinations(occurrences: Occurrences): List[Occurrences] =
+    (occurrences match {
+      case Nil => List(Nil)
+      case (c, 1) :: xs => combinations(xs) ::: combinations(xs).map(i => (c, 1) :: i)
+      case (c, n) :: xs => combinations((c, n-1)::xs) ::: combinations((c, n-1)::xs).map(i => (c, 1) :: i)
+    }).map(o => aggregateOccurrences(o))
 
   /** Subtracts occurrence list `y` from occurrence list `x`.
    *
