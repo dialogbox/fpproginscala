@@ -124,6 +124,7 @@ object Anagrams {
         x.partition(o => o._1 < y._1) match {
           case (xa, (y._1, y._2) :: xb) => xa ::: subtract(xb, ys)
           case (xa, (y._1, o) :: xb) => xa ::: (y._1, o - y._2) :: subtract(xb, ys)
+          case _ => ???
         }
     }
 
@@ -167,5 +168,17 @@ object Anagrams {
    *
    *  Note: There is only one anagram of an empty sentence.
    */
-  def sentenceAnagrams(sentence: Sentence): List[Sentence] = ???
+  def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
+    def loop(occurrences: Occurrences): List[Sentence] =
+      occurrences match {
+        case Nil => List(Nil)
+        case o => combinations(o).flatMap(c =>
+          dictionaryByOccurrences.get(c) match {
+            case Some(words) => loop(subtract(o, c)).flatMap(a => words.map(b => b :: a))
+            case None => Nil
+          })
+      }
+
+    loop(sentenceOccurrences(sentence))
+  }
 }
